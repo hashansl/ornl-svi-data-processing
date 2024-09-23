@@ -104,7 +104,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
     graph = csr_matrix(QTemp)
     n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
 
-    print(f"Number of connected components: {n_components}")
+    # print(f"Number of connected components: {n_components}")
 
     data_frame[variable_name+'_marginal_variance'] = None
 
@@ -113,13 +113,13 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
         # print(k)
 
         # get the length of the labels array where the value is equal to i
-        print(len(labels[labels == k]))
+        # print(len(labels[labels == k]))
 
         if len(labels[labels==k])==1:
 
             # get the index of the label
             index = np.where(labels==k)[0][0]
-            print(index)
+            # print(index)
 
             #this part is not written becase: does not exists
 
@@ -129,7 +129,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
             # print(f"Region {k} is an isolated region")
             # print(f"Marginal Variances with FIPS: {list(zip(Qmatrix[0].index, marginal_variances))}")
         else:
-            print(f"Region {k} is a connected region")
+            # print(f"Region {k} is a connected region")
 
             # get the location index to an array 
             index = np.where(labels == k)
@@ -191,7 +191,7 @@ def generate_scaled_marginal_variance(simplices,data_frame, variable_name):
                 if vertice not in selected_census:
                     selected_census.append(vertice)
     
-    print(selected_census)
+    # print(selected_census)
 
     # print(data_frame.head(3))
     # print(data_frame.columns)
@@ -225,7 +225,7 @@ def generate_scaled_marginal_variance(simplices,data_frame, variable_name):
     graph = csr_matrix(QTemp)
     n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
 
-    print(f"Number of connected components: {n_components}")
+    # print(f"Number of connected components: {n_components}")
 
     data_frame[variable_name+'_marginal_variance'] = None
 
@@ -337,8 +337,8 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
         # Filter the dataframe to include only the current county
         county_svi_df = svi_od_filtered_state[svi_od_filtered_state['STCNTY'] == county_stcnty]
 
-        print("County")
-        print(county_svi_df)
+        # print("County")
+        # print(county_svi_df)
     
         for variable_name in selected_variables:
             df_one_variable = county_svi_df[['STCNTY','FIPS', variable_name, 'geometry']]
@@ -360,22 +360,93 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
 
             generalized_variance = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
 
-            print(f'Generalized Variance: {generalized_variance}')
+            # print(f'Generalized Variance: {generalized_variance}')
 
-            
+            # Generate persistence images based on the generalized variance
+            generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance)
+
+            # break
+
+        # break
 
 
+def generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance):
+    """Generate persistence images."""
 
-            break
+    st = gudhi.SimplexTree()
+    st.set_dimension(2)
 
-        break
+    for simplex in simplices:
+        if len(simplex) == 1:
+            st.insert([simplex[0]], filtration=0.0)
+
+    for simplex in simplices:
+        if len(simplex) == 2:
+            last_simplex = simplex[-1]
+            filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
+            st.insert(simplex, filtration=filtration_value)
+
+    for simplex in simplices:
+        if len(simplex) == 3:
+            last_simplex = simplex[-1]
+            filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
+            st.insert(simplex, filtration=filtration_value)
+
+    st.compute_persistence()
+    persistence = st.persistence()
+
+    intervals_dim0 = st.persistence_intervals_in_dimension(0)
+    intervals_dim1 = st.persistence_intervals_in_dimension(1)
+    pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
+
+    # add interval dim 0  to the pdgms
+    for birth, death in intervals_dim0:
+        if death < np.inf:
+            pdgms.append([birth, death])
+        # elif death == np.inf:
+            # pdgms.append([birth, INFINITY])
+        
+
+    save_path = os.path.join(base_path, variable_name, county_stcnty)
+
+    if len(pdgms) > 0:
+        
+        # print(f'Processing {variable_name} for {county_stcnty}')
+        # print(f'Number of persistence diagrams: {len(pdgms)}')
+        # print(intervals_dim1)
+        # for i in range(len(intervals_dim1)):
+        #     if np.isinf(pdgms[i][1]):
+        #         pdgms[i][1] = 1
+        #     if np.isinf(pdgms[i][0]):
+        #         pdgms[i][0] = 1
+
+        pimgr = PersistenceImager(pixel_size=0.01)
+        pimgr.fit(pdgms)
+
+        pimgr.pixel_size = PERSISTENCE_IMAGE_PARAMS['pixel_size']
+        pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
+        pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
+        pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
+
+        pimgs = pimgr.transform(pdgms)
+        pimgs = np.rot90(pimgs, k=1) 
+
+        # np.save(save_path, pimgs)
+
+        plt.figure(figsize=(2.4, 2.4))
+        plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
+        plt.axis('off')  # Turn off axis
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
+        
+        plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+        plt.close()
 
 
 
 # Define the main function
 if __name__ == "__main__":
     # Main execution
-    base_path = '/home/h6x/git_projects/data_processing/processed_data/adjacency_pers_images_npy_county/experimet_4/npy_all_variables'
+    base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_7/images'
     # data_path = '/home/h6x/git_projects/data_processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
     data_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
 
@@ -388,25 +459,25 @@ if __name__ == "__main__":
     ]
     selected_variables_with_censusinfo = ['FIPS', 'STCNTY'] + selected_variables + ['geometry']
 
-    # PERSISTENCE_IMAGE_PARAMS = {
-    #     'pixel_size': 0.001,
-    #     'birth_range': (0.0, 1.00),
-    #     'pers_range': (0.0, 0.40),
-    #     'kernel_params': {'sigma': 0.0003}
-    # }
-
     PERSISTENCE_IMAGE_PARAMS = {
-            'pixel_size': 0.01,
-            'birth_range': (-7.0, 0.00),
-            'pers_range': (0.0, 3.00),
-            'kernel_params': {'sigma': 0.008}
-        }
+        'pixel_size': 0.001,
+        'birth_range': (0.0, 1.00),
+        'pers_range': (0.0, 0.40),
+        'kernel_params': {'sigma': 0.0003}
+    }
+
+    # PERSISTENCE_IMAGE_PARAMS = {
+    #         'pixel_size': 0.01,
+    #         'birth_range': (-7.0, 0.00),
+    #         'pers_range': (0.0, 3.00),
+    #         'kernel_params': {'sigma': 0.008}
+    #     }
 
     INF_DELTA = 0.1
     # INFINITY = (PERSISTENCE_IMAGE_PARAMS['birth_range'][1] - PERSISTENCE_IMAGE_PARAMS['birth_range'][0]) * INF_DELTA
     INFINITY = 1
 
-    # create_variable_folders(base_path, selected_variables)
+    create_variable_folders(base_path, selected_variables)
 
     for state in tqdm(states, desc="Processing states"):
 
