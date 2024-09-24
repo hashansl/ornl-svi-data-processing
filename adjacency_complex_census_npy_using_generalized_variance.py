@@ -70,7 +70,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
                 if vertice not in selected_census:
                     selected_census.append(vertice)
     
-    print(f'selected census: {selected_census}')
+    # print(f'selected census: {selected_census}')
 
     # print(data_frame.head(3))
     # print(data_frame.columns)
@@ -104,7 +104,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
     graph = csr_matrix(QTemp)
     n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
 
-    # print(f"Number of connected components: {n_components}")
+    print(f"Number of connected components: {n_components}")
 
     data_frame[variable_name+'_marginal_variance'] = None
 
@@ -176,7 +176,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
 
             # print(f"Generalized Variance: {generalized_variance}")
 
-            return generalized_variance
+    return generalized_variance
 
 
 
@@ -352,22 +352,30 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
             county_list = adjacent_counties_df['county'].tolist()
             simplices = form_simplicial_complex(adjacent_counties_dict, county_list)
 
-            print(f'State: {state}')
-            print(f'County: {county_stcnty}')
-            print(f'County: {variable_name}')
+            print(f'length of simplices: {len(simplices)}')
 
-            print("Simplices",simplices)
-
-            generalized_variance = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
-
-            # print(f'Generalized Variance: {generalized_variance}')
-
-            # Generate persistence images based on the generalized variance
             if len(simplices)==0:
                 print(f'No simplices for {variable_name} in {county_stcnty}')
                 print(df_one_variable)
-            
-            generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance)
+            else:
+                print(f'State: {state}')
+                print(f'County: {county_stcnty}')
+                print(f'County: {variable_name}')
+
+                # print("Simplices",simplices)
+
+                generalized_variance = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
+
+                print(f'Generalized Variance: {generalized_variance}\n')
+
+                # print(f'Generalized Variance: {generalized_variance}')
+
+                # Generate persistence images based on the generalized variance
+                if len(simplices)==0:
+                    print(f'No simplices for {variable_name} in {county_stcnty}')
+                    print(df_one_variable)
+                
+                # generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance)
 
             # break
 
@@ -486,6 +494,6 @@ if __name__ == "__main__":
     for state in tqdm(states, desc="Processing states"):
 
         process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
-        break
+        # break
 
     print('All states processed.')
