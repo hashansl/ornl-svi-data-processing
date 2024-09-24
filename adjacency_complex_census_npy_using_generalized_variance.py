@@ -70,7 +70,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
                 if vertice not in selected_census:
                     selected_census.append(vertice)
     
-    print(selected_census)
+    print(f'selected census: {selected_census}')
 
     # print(data_frame.head(3))
     # print(data_frame.columns)
@@ -356,13 +356,17 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
             print(f'County: {county_stcnty}')
             print(f'County: {variable_name}')
 
-            # print(simplices)
+            print("Simplices",simplices)
 
             generalized_variance = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
 
             # print(f'Generalized Variance: {generalized_variance}')
 
             # Generate persistence images based on the generalized variance
+            if len(simplices)==0:
+                print(f'No simplices for {variable_name} in {county_stcnty}')
+                print(df_one_variable)
+            
             generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance)
 
             # break
