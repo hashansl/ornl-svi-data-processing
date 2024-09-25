@@ -106,8 +106,32 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
 
     print(f"Number of connected components: {n_components}")
 
-    data_frame[variable_name+'_marginal_variance'] = None
+    # get the simplices for each component(network)
+    component_census = {i: [] for i in range(n_components)}  # Initialize a dictionary for simplices per component
+    component_simplices = {i: [] for i in range(n_components)}  # Initialize a dictionary for simplices per component
 
+    # if there are multiple components in the graph. Assign the simplices to the corresponding component
+    if n_components>1:
+
+        for idx, label in enumerate(labels):
+            # print(idx, label)
+            component_census[label].append(idx)
+        
+        for simplex in simplices:
+            if len(simplex) == 2 or len(simplex) == 3:
+                # take the first vertice in the simplex and check component census it belongs to
+                vertice = simplex[0]
+                for component in component_census:
+                    
+                    if vertice in component_census[component]:
+                        # print(f'vertice {vertice} belongs to component {component}')
+                        component_simplices[component].append(simplex)
+
+
+    data_frame[variable_name+'_marginal_variance'] = None #delete this line
+
+    # assign generalized variance for each n_component
+    generalized_variance_dic = {i: [] for i in range(n_components)}  # Initialize a dictionary for each n_component
 
     for k in range(n_components):
         # print(k)
@@ -128,6 +152,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
 
             # print(f"Region {k} is an isolated region")
             # print(f"Marginal Variances with FIPS: {list(zip(Qmatrix[0].index, marginal_variances))}")
+            generalized_variance_dic[k] = 1  #CHECK THIS VALUE
         else:
             # print(f"Region {k} is a connected region")
 
@@ -174,9 +199,11 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
             generalized_variance = np.exp(np.mean(np.log(np.diag(Q_inv))))  # equation in the paper use daba as 1
             # generalized_variance = np.exp(np.sum(np.log(np.diag(Q_inv))) / n) #same as above
 
+            generalized_variance_dic[k] = generalized_variance
+
             # print(f"Generalized Variance: {generalized_variance}")
 
-    return generalized_variance
+    return generalized_variance_dic, component_census, component_simplices
 
 
 
@@ -356,7 +383,7 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
 
             if len(simplices)==0:
                 print(f'No simplices for {variable_name} in {county_stcnty}')
-                print(df_one_variable)
+                # print(df_one_variable)
             else:
                 print(f'State: {state}')
                 print(f'County: {county_stcnty}')
@@ -364,94 +391,168 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
 
                 # print("Simplices",simplices)
 
-                generalized_variance = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
+                generalized_variance_dic, component_census, component_simplices = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
 
-                print(f'Generalized Variance: {generalized_variance}\n')
+                print(f'Generalized Variance: {generalized_variance_dic}\n')
 
                 # print(f'Generalized Variance: {generalized_variance}')
 
                 # Generate persistence images based on the generalized variance
-                if len(simplices)==0:
-                    print(f'No simplices for {variable_name} in {county_stcnty}')
-                    print(df_one_variable)
-                
-                # generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance)
+                # generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance, component_census, component_simplices)
 
             # break
 
         # break
 
 
-def generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance):
+def generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance_dic, component_census, component_simplices):
     """Generate persistence images."""
 
-    st = gudhi.SimplexTree()
-    st.set_dimension(2)
+    if len(generalized_variance_dic)==1:
 
-    for simplex in simplices:
-        if len(simplex) == 1:
-            st.insert([simplex[0]], filtration=0.0)
+        st = gudhi.SimplexTree()
+        st.set_dimension(2)
 
-    for simplex in simplices:
-        if len(simplex) == 2:
-            last_simplex = simplex[-1]
-            filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
-            st.insert(simplex, filtration=filtration_value)
+        for simplex in simplices:
+            if len(simplex) == 1:
+                st.insert([simplex[0]], filtration=0.0)
 
-    for simplex in simplices:
-        if len(simplex) == 3:
-            last_simplex = simplex[-1]
-            filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
-            st.insert(simplex, filtration=filtration_value)
+        for simplex in simplices:
+            if len(simplex) == 2:
+                last_simplex = simplex[-1]
+                filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
+                st.insert(simplex, filtration=filtration_value)
 
-    st.compute_persistence()
-    persistence = st.persistence()
+        for simplex in simplices:
+            if len(simplex) == 3:
+                last_simplex = simplex[-1]
+                filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
+                st.insert(simplex, filtration=filtration_value)
 
-    intervals_dim0 = st.persistence_intervals_in_dimension(0)
-    intervals_dim1 = st.persistence_intervals_in_dimension(1)
-    pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
+        st.compute_persistence()
+        persistence = st.persistence()
 
-    # add interval dim 0  to the pdgms
-    for birth, death in intervals_dim0:
-        if death < np.inf:
-            pdgms.append([birth, death])
-        # elif death == np.inf:
-            # pdgms.append([birth, INFINITY])
-        
+        intervals_dim0 = st.persistence_intervals_in_dimension(0)
+        intervals_dim1 = st.persistence_intervals_in_dimension(1)
+        pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
 
-    save_path = os.path.join(base_path, variable_name, county_stcnty)
+        # add interval dim 0  to the pdgms
+        for birth, death in intervals_dim0:
+            if death < np.inf:
+                pdgms.append([birth, death])
+            # elif death == np.inf:
+                # pdgms.append([birth, INFINITY])
+            
 
-    if len(pdgms) > 0:
-        
-        # print(f'Processing {variable_name} for {county_stcnty}')
-        # print(f'Number of persistence diagrams: {len(pdgms)}')
-        # print(intervals_dim1)
-        # for i in range(len(intervals_dim1)):
-        #     if np.isinf(pdgms[i][1]):
-        #         pdgms[i][1] = 1
-        #     if np.isinf(pdgms[i][0]):
-        #         pdgms[i][0] = 1
+        save_path = os.path.join(base_path, variable_name, county_stcnty)
 
-        pimgr = PersistenceImager(pixel_size=0.01)
-        pimgr.fit(pdgms)
+        if len(pdgms) > 0:
+            
+            # print(f'Processing {variable_name} for {county_stcnty}')
+            # print(f'Number of persistence diagrams: {len(pdgms)}')
+            # print(intervals_dim1)
+            # for i in range(len(intervals_dim1)):
+            #     if np.isinf(pdgms[i][1]):
+            #         pdgms[i][1] = 1
+            #     if np.isinf(pdgms[i][0]):
+            #         pdgms[i][0] = 1
 
-        pimgr.pixel_size = PERSISTENCE_IMAGE_PARAMS['pixel_size']
-        pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
-        pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
-        pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
+            pimgr = PersistenceImager(pixel_size=0.01)
+            pimgr.fit(pdgms)
 
-        pimgs = pimgr.transform(pdgms)
-        pimgs = np.rot90(pimgs, k=1) 
+            pimgr.pixel_size = PERSISTENCE_IMAGE_PARAMS['pixel_size']
+            pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
+            pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
+            pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
 
-        # np.save(save_path, pimgs)
+            pimgs = pimgr.transform(pdgms)
+            pimgs = np.rot90(pimgs, k=1) 
 
-        plt.figure(figsize=(2.4, 2.4))
-        plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
-        plt.axis('off')  # Turn off axis
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
-        
-        plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
-        plt.close()
+            # np.save(save_path, pimgs)
+
+            plt.figure(figsize=(2.4, 2.4))
+            plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
+            plt.axis('off')  # Turn off axis
+            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
+            
+            plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+            plt.close()
+    else:
+        per_images_per_subcomponent = []
+
+        for key in component_census.keys():
+            print(key)
+            
+            generalized_variance = generalized_variance_dic[key]
+            simplices_sub = component_simplices[key]
+            census_sub = component_census[key]
+            print(f'Generalized Variance: {generalized_variance}')
+            print(f'Simplices: {simplices_sub}')
+            print(f'Census: {census_sub}')
+
+
+            # Generate persistence images based on the generalized variance
+
+            st = gudhi.SimplexTree()
+            st.set_dimension(2)
+
+            for simplex in census_sub:
+                print(simplex)
+            #     # if len(simplex) == 1:
+                st.insert([simplex], filtration=0.0)
+
+            for simplex in simplices_sub:
+                if len(simplex) == 2:
+                    last_simplex = simplex[-1]
+                    filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
+                    st.insert(simplex, filtration=filtration_value)
+
+            for simplex in simplices_sub:
+                if len(simplex) == 3:
+                    last_simplex = simplex[-1]
+                    filtration_value = df_one_variable.loc[df_one_variable['sortedID'] == last_simplex, variable_name].values[0]
+                    st.insert(simplex, filtration=filtration_value)
+
+            st.compute_persistence()
+            persistence = st.persistence()
+
+            intervals_dim0 = st.persistence_intervals_in_dimension(0)
+            intervals_dim1 = st.persistence_intervals_in_dimension(1)
+            pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
+
+            # add interval dim 0  to the pdgms
+            for birth, death in intervals_dim0:
+                if death < np.inf:
+                    pdgms.append([birth, death])
+                # elif death == np.inf:
+                    # pdgms.append([birth, INFINITY])
+                
+
+            # save_path = os.path.join(base_path, variable_name, county_stcnty)
+
+            if len(pdgms) > 0:
+                
+                # print(f'Processing {variable_name} for {county_stcnty}')
+                # print(f'Number of persistence diagrams: {len(pdgms)}')
+                # print(intervals_dim1)
+                # for i in range(len(intervals_dim1)):
+                #     if np.isinf(pdgms[i][1]):
+                #         pdgms[i][1] = 1
+                #     if np.isinf(pdgms[i][0]):
+                #         pdgms[i][0] = 1
+
+                pimgr = PersistenceImager(pixel_size=0.01)
+                pimgr.fit(pdgms)
+
+                pimgr.pixel_size = PERSISTENCE_IMAGE_PARAMS['pixel_size']
+                pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
+                pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
+                pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
+
+                pimgs = pimgr.transform(pdgms)
+                pimgs = np.rot90(pimgs, k=1) 
+                per_images_per_subcomponent.append(pimgs)
+ 
 
 
 
