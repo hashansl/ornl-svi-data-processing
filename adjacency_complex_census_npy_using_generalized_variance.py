@@ -110,22 +110,24 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
     component_census = {i: [] for i in range(n_components)}  # Initialize a dictionary for simplices per component
     component_simplices = {i: [] for i in range(n_components)}  # Initialize a dictionary for simplices per component
 
-    # if there are multiple components in the graph. Assign the simplices to the corresponding component
-    if n_components>1:
+    # Get the index of the selected census(this way missing census(not selected) will not be included)
+    id = QTemp.index.to_list()
 
-        for idx, label in enumerate(labels):
-            # print(idx, label)
-            component_census[label].append(idx)
-        
-        for simplex in simplices:
-            if len(simplex) == 2 or len(simplex) == 3:
-                # take the first vertice in the simplex and check component census it belongs to
-                vertice = simplex[0]
-                for component in component_census:
-                    
-                    if vertice in component_census[component]:
-                        # print(f'vertice {vertice} belongs to component {component}')
-                        component_simplices[component].append(simplex)
+    # if there are multiple components in the graph. Assign the simplices to the corresponding component
+    
+
+    for label, idx in zip(labels, id):
+        component_census[label].append(idx)
+    
+    for simplex in simplices:
+        if len(simplex) == 2 or len(simplex) == 3:
+            # take the first vertice in the simplex and check component census it belongs to
+            vertice = simplex[0]
+            for component in component_census:
+                
+                if vertice in component_census[component]:
+                    # print(f'vertice {vertice} belongs to component {component}')
+                    component_simplices[component].append(simplex)
 
 
     data_frame[variable_name+'_marginal_variance'] = None #delete this line
@@ -343,7 +345,7 @@ def generate_scaled_marginal_variance(simplices,data_frame, variable_name):
     # turn the column into float
     data_frame[variable_name + '_marginal_variance'] = data_frame[variable_name + '_marginal_variance'].astype('float64')
 
-    print(data_frame)
+    # print(data_frame)
 
 
 
@@ -398,7 +400,7 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
                 # print(f'Generalized Variance: {generalized_variance}')
 
                 # Generate persistence images based on the generalized variance
-                # generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance, component_census, component_simplices)
+                generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance_dic, component_census, component_simplices)
 
             # break
 
@@ -409,6 +411,8 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
     """Generate persistence images."""
 
     if len(generalized_variance_dic)==1:
+
+        generalized_variance = list(generalized_variance_dic.values())[0]
 
         st = gudhi.SimplexTree()
         st.set_dimension(2)
@@ -463,7 +467,9 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
             pimgr.pixel_size = PERSISTENCE_IMAGE_PARAMS['pixel_size']
             pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
             pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
-            pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
+            # pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
+            pimgr.kernel_params =  {'sigma': generalized_variance}
+
 
             pimgs = pimgr.transform(pdgms)
             pimgs = np.rot90(pimgs, k=1) 
@@ -477,18 +483,20 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
             
             plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
             plt.close()
-    else:
+    elif len(generalized_variance_dic)>1:
+
+        # each sub network will generate a separate persistence image
         per_images_per_subcomponent = []
 
         for key in component_census.keys():
-            print(key)
+            # print(key)
             
             generalized_variance = generalized_variance_dic[key]
             simplices_sub = component_simplices[key]
             census_sub = component_census[key]
-            print(f'Generalized Variance: {generalized_variance}')
-            print(f'Simplices: {simplices_sub}')
-            print(f'Census: {census_sub}')
+            # print(f'Generalized Variance: {generalized_variance}')
+            # print(f'Simplices: {simplices_sub}')
+            # print(f'Census: {census_sub}')
 
 
             # Generate persistence images based on the generalized variance
@@ -497,7 +505,7 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
             st.set_dimension(2)
 
             for simplex in census_sub:
-                print(simplex)
+                # print(simplex)
             #     # if len(simplex) == 1:
                 st.insert([simplex], filtration=0.0)
 
@@ -547,12 +555,24 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
                 pimgr.pixel_size = PERSISTENCE_IMAGE_PARAMS['pixel_size']
                 pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
                 pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
-                pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
+                # pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
+                pimgr.kernel_params =  {'sigma': generalized_variance}
 
                 pimgs = pimgr.transform(pdgms)
                 pimgs = np.rot90(pimgs, k=1) 
                 per_images_per_subcomponent.append(pimgs)
- 
+
+        final_pimgr = np.sum(per_images_per_subcomponent, axis=0)
+        print(f"Multple pimager shape :",final_pimgr.shape)
+
+        plt.figure(figsize=(2.4, 2.4))
+        plt.imshow(final_pimgr, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
+        plt.axis('off')  # Turn off axis
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
+        
+        plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+        plt.close()
+
 
 
 
@@ -595,6 +615,6 @@ if __name__ == "__main__":
     for state in tqdm(states, desc="Processing states"):
 
         process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
-        # break
+        
 
     print('All states processed.')
