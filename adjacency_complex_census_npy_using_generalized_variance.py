@@ -410,6 +410,8 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
 def generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance_dic, component_census, component_simplices):
     """Generate persistence images."""
 
+    save_path = os.path.join(base_path, variable_name, county_stcnty)
+
     if len(generalized_variance_dic)==1:
 
         generalized_variance = list(generalized_variance_dic.values())[0]
@@ -446,9 +448,6 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
                 pdgms.append([birth, death])
             # elif death == np.inf:
                 # pdgms.append([birth, INFINITY])
-            
-
-        save_path = os.path.join(base_path, variable_name, county_stcnty)
 
         if len(pdgms) > 0:
             
@@ -474,15 +473,15 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
             pimgs = pimgr.transform(pdgms)
             pimgs = np.rot90(pimgs, k=1) 
 
-            # np.save(save_path, pimgs)
+            np.save(save_path, pimgs)
 
-            plt.figure(figsize=(2.4, 2.4))
-            plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
-            plt.axis('off')  # Turn off axis
-            plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
+            # plt.figure(figsize=(2.4, 2.4))
+            # plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
+            # plt.axis('off')  # Turn off axis
+            # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
             
-            plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
-            plt.close()
+            # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+            # plt.close()
     elif len(generalized_variance_dic)>1:
 
         # each sub network will generate a separate persistence image
@@ -563,15 +562,17 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
                 per_images_per_subcomponent.append(pimgs)
 
         final_pimgr = np.sum(per_images_per_subcomponent, axis=0)
-        print(f"Multple pimager shape :",final_pimgr.shape)
+        np.save(save_path, final_pimgr)
 
-        plt.figure(figsize=(2.4, 2.4))
-        plt.imshow(final_pimgr, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
-        plt.axis('off')  # Turn off axis
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
+        # print(f"Multple pimager shape :",final_pimgr.shape)
+
+        # plt.figure(figsize=(2.4, 2.4))
+        # plt.imshow(final_pimgr, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
+        # plt.axis('off')  # Turn off axis
+        # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
         
-        plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
-        plt.close()
+        # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+        # plt.close()
 
 
 
@@ -579,8 +580,7 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
 # Define the main function
 if __name__ == "__main__":
     # Main execution
-    base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_7/images'
-    # data_path = '/home/h6x/git_projects/data_processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
+    base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_7/npy_all_variables'
     data_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
 
     states = get_folders(data_path)
