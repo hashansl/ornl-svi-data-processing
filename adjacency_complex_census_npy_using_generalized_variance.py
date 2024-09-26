@@ -104,7 +104,7 @@ def generate_generalized_variance(simplices,data_frame, variable_name):
     graph = csr_matrix(QTemp)
     n_components, labels = connected_components(csgraph=graph, directed=False, return_labels=True)
 
-    print(f"Number of connected components: {n_components}")
+    # print(f"Number of connected components: {n_components}")
 
     # get the simplices for each component(network)
     component_census = {i: [] for i in range(n_components)}  # Initialize a dictionary for simplices per component
@@ -381,21 +381,21 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
             county_list = adjacent_counties_df['county'].tolist()
             simplices = form_simplicial_complex(adjacent_counties_dict, county_list)
 
-            print(f'length of simplices: {len(simplices)}')
+            # print(f'length of simplices: {len(simplices)}')
 
             if len(simplices)==0:
                 print(f'No simplices for {variable_name} in {county_stcnty}')
                 # print(df_one_variable)
             else:
-                print(f'State: {state}')
-                print(f'County: {county_stcnty}')
-                print(f'County: {variable_name}')
+                # print(f'State: {state}')
+                # print(f'County: {county_stcnty}')
+                # print(f'County: {variable_name}')
 
                 # print("Simplices",simplices)
 
                 generalized_variance_dic, component_census, component_simplices = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
 
-                print(f'Generalized Variance: {generalized_variance_dic}\n')
+                # print(f'Generalized Variance: {generalized_variance_dic}\n')
 
                 # print(f'Generalized Variance: {generalized_variance}')
 
@@ -405,6 +405,50 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
             # break
 
         # break
+
+
+def process_county(state, county, variable, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY):
+
+    svi_od_path = os.path.join(data_path, state, state + '.shp')
+    svi_od = gpd.read_file(svi_od_path)
+    # # for variable in selected_variables:
+    #     # svi_od = svi_od[svi_od[variable] != -999]
+
+        
+    svi_od_filtered_state = svi_od[selected_variables_with_censusinfo].reset_index(drop=True)
+    county_svi_df = svi_od_filtered_state[svi_od_filtered_state['STCNTY'] == county]
+
+    df_one_variable = county_svi_df[['STCNTY','FIPS', variable, 'geometry']]
+    df_one_variable = df_one_variable.sort_values(by=variable)
+    df_one_variable['sortedID'] = range(len(df_one_variable))
+    df_one_variable = gpd.GeoDataFrame(df_one_variable, geometry='geometry')
+    df_one_variable.crs = "EPSG:3395"
+
+    adjacencies_list, adjacent_counties_df, county_list = generate_adjacent_counties(df_one_variable, variable_name)
+    adjacent_counties_dict = dict(zip(adjacent_counties_df['county'], adjacent_counties_df['adjacent']))
+    county_list = adjacent_counties_df['county'].tolist()
+    simplices = form_simplicial_complex(adjacent_counties_dict, county_list)
+
+    # print(f'length of simplices: {len(simplices)}')
+
+    if len(simplices)==0:
+        print(f'No simplices for {variable} in {county}')
+        # print(df_one_variable)
+    else:
+        # print(f'State: {state}')
+        # print(f'County: {county_stcnty}')
+        # print(f'County: {variable_name}')
+
+        # print("Simplices",simplices)
+
+        generalized_variance_dic, component_census, component_simplices = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
+
+        # print(f'Generalized Variance: {generalized_variance_dic}\n')
+
+        # print(f'Generalized Variance: {generalized_variance}')
+
+        # Generate persistence images based on the generalized variance
+        generate_persistence_images(simplices, df_one_variable, variable, county, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance_dic, component_census, component_simplices)
 
 
 def generate_persistence_images(simplices, df_one_variable, variable_name, county_stcnty, base_path, PERSISTENCE_IMAGE_PARAMS, generalized_variance_dic, component_census, component_simplices):
@@ -467,7 +511,8 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
             pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
             pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
             # pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
-            pimgr.kernel_params =  {'sigma': generalized_variance}
+            # pimgr.kernel_params =  {'sigma': generalized_variance}
+            pimgr.kernel_params =  {'sigma': np.sqrt(generalized_variance)}
 
 
             pimgs = pimgr.transform(pdgms)
@@ -555,7 +600,9 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
                 pimgr.birth_range = PERSISTENCE_IMAGE_PARAMS['birth_range']
                 pimgr.pers_range = PERSISTENCE_IMAGE_PARAMS['pers_range']
                 # pimgr.kernel_params = PERSISTENCE_IMAGE_PARAMS['kernel_params']
-                pimgr.kernel_params =  {'sigma': generalized_variance}
+                # pimgr.kernel_params =  {'sigma': generalized_variance}
+                pimgr.kernel_params =  {'sigma': np.sqrt(generalized_variance)}
+
 
                 pimgs = pimgr.transform(pdgms)
                 pimgs = np.rot90(pimgs, k=1) 
@@ -580,8 +627,9 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
 # Define the main function
 if __name__ == "__main__":
     # Main execution
-    base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_7/npy_all_variables'
-    data_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
+    base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_8/npy_all_variables'
+    # data_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
+    data_path = "/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_NOT_SCALED_MISSING_REMOVED"
 
     states = get_folders(data_path)
 
@@ -592,12 +640,12 @@ if __name__ == "__main__":
     ]
     selected_variables_with_censusinfo = ['FIPS', 'STCNTY'] + selected_variables + ['geometry']
 
-    PERSISTENCE_IMAGE_PARAMS = {
-        'pixel_size': 0.001,
-        'birth_range': (0.0, 1.00),
-        'pers_range': (0.0, 0.40),
-        'kernel_params': {'sigma': 0.0003}
-    }
+    # PERSISTENCE_IMAGE_PARAMS = {
+    #     'pixel_size': 0.001,
+    #     'birth_range': (0.0, 1.00),
+    #     'pers_range': (0.0, 0.40),
+    #     'kernel_params': {'sigma': 0.0003}
+    # }
 
     # PERSISTENCE_IMAGE_PARAMS = {
     #         'pixel_size': 0.01,
@@ -606,15 +654,32 @@ if __name__ == "__main__":
     #         'kernel_params': {'sigma': 0.008}
     #     }
 
+    PERSISTENCE_IMAGE_PARAMS = {
+        'pixel_size': 0.1,
+        'birth_range': (0.0, 100),
+        'pers_range': (0.0, 100),
+        'kernel_params': {'sigma': 0.0003}
+    }
+
     INF_DELTA = 0.1
     # INFINITY = (PERSISTENCE_IMAGE_PARAMS['birth_range'][1] - PERSISTENCE_IMAGE_PARAMS['birth_range'][0]) * INF_DELTA
     INFINITY = 1
 
     create_variable_folders(base_path, selected_variables)
 
-    for state in tqdm(states, desc="Processing states"):
+    # for state in tqdm(states, desc="Processing states"):
 
-        process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
+    #     process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
+
+
+
+    # Experiment with a single county and single variable
+    state = 'TN'
+    county = '47095'
+    variable = 'EP_POV'
+
+
+    process_county(state,county, variable, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
         
 
     print('All states processed.')

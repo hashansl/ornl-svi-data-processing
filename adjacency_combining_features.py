@@ -51,7 +51,7 @@ if __name__ == "__main__":
     variables = ['EP_POV','EP_UNEMP','EP_NOHSDP','EP_UNINSUR','EP_AGE65','EP_AGE17','EP_DISABL','EP_SNGPNT','EP_LIMENG','EP_MINRTY','EP_MUNIT','EP_MOBILE','EP_CROWD','EP_NOVEH','EP_GROUPQ']
     # variables = ['EP_POV150','EP_UNEMP','EP_NOHSDP','EP_UNINSUR','EP_AGE65','EP_AGE17','EP_DISABL','EP_SNGPNT','EP_LIMENG','EP_MINRTY','EP_MUNIT','EP_MOBILE','EP_CROWD','EP_NOVEH','EP_GROUPQ']
 
-    BASE_DIR = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_7'
+    BASE_DIR = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_8'
     DATA_DIR = f"{BASE_DIR}/npy_all_variables"
     COMBINED_FEATURES_DIR = f"{BASE_DIR}/npy_combined"
 

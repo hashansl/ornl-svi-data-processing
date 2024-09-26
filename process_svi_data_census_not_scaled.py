@@ -8,18 +8,11 @@ import numpy as np
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def load_data(svi_path, overdose_path):
-    """Load SVI and overdose data."""
+def load_data(svi_path):
+    """Load SVI  data."""
     us_svi = gpd.read_file(svi_path)
-    overdose_df = pd.read_excel(overdose_path)
-    return us_svi, overdose_df
+    return us_svi
 
-
-def preprocess_overdose_data(overdose_df):
-    """Preprocess overdose data."""
-    overdose_df['GEO ID'] = overdose_df['GEO ID'].astype(str)
-    overdose_df['GEO ID'] = overdose_df['GEO ID'].apply(lambda x: x.zfill(5))
-    return overdose_df
 
 
 def preprocess_svi_data(us_svi, raw_variables):
@@ -42,7 +35,7 @@ def get_states(us_svi):
     return states
 
 
-def process_state_data(state, us_svi, overdose_df, output_dir):
+def process_state_data(state, us_svi, output_dir):
     """Process data for a single state."""
     print(f'Processing: {state}')
     try:
@@ -79,29 +72,27 @@ def process_state_data(state, us_svi, overdose_df, output_dir):
 
 def main():
     svi_path = '/home/h6x/git_projects/ornl-svi-data-processing/raw_data/svi/2018/SVI2018_US_tract.gdb'
-    overdose_path = 'git_projects/ornl-svi-data-processing/raw_data/HepVu_County_Opioid_Indicators_05DEC22.xlsx'
     # output_dir = '/home/h6x/git_projects/data_processing/processed_data/SVI/2020/SVI2020_MIN_MAX_SCALED_MISSING_REMOVED'
     output_dir = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_NOT_SCALED_MISSING_REMOVED'
 
-    # raw_variables = [
-    #     'EP_POV', 'EP_UNEMP', 'EP_PCI', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
-    #     'EP_AGE17', 'EP_DISABL', 'EP_SNGPNT', 'EP_LIMENG', 'EP_MINRTY', 'EP_MUNIT',
-    #     'EP_MOBILE', 'EP_CROWD', 'EP_NOVEH', 'EP_GROUPQ'
-    # ]
-
     raw_variables = [
-        'EP_POV150', 'EP_UNEMP', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
+        'EP_POV', 'EP_UNEMP', 'EP_PCI', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
         'EP_AGE17', 'EP_DISABL', 'EP_SNGPNT', 'EP_LIMENG', 'EP_MINRTY', 'EP_MUNIT',
         'EP_MOBILE', 'EP_CROWD', 'EP_NOVEH', 'EP_GROUPQ'
     ]
 
-    us_svi, overdose_df = load_data(svi_path, overdose_path)
-    # overdose_df = preprocess_overdose_data(overdose_df)
+    # raw_variables = [
+    #     'EP_POV150', 'EP_UNEMP', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
+    #     'EP_AGE17', 'EP_DISABL', 'EP_SNGPNT', 'EP_LIMENG', 'EP_MINRTY', 'EP_MUNIT',
+    #     'EP_MOBILE', 'EP_CROWD', 'EP_NOVEH', 'EP_GROUPQ'
+    # ]
+
+    us_svi = load_data(svi_path)
     us_svi = preprocess_svi_data(us_svi, raw_variables)
     states = get_states(us_svi)
 
     for state in states:
-        process_state_data(state, us_svi, overdose_df, output_dir)
+        process_state_data(state, us_svi, output_dir)
 
 
 if __name__ == "__main__":
