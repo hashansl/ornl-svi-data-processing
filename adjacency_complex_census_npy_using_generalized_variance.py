@@ -10,6 +10,8 @@ from tqdm import tqdm
 from persim import PersistenceImager
 import invr
 import matplotlib as mpl
+from persim.images_weights import linear_ramp
+
 
 from pysal.lib import weights
 from pysal.lib import weights
@@ -424,7 +426,7 @@ def process_county(state, county, variable, selected_variables_with_censusinfo, 
     df_one_variable = gpd.GeoDataFrame(df_one_variable, geometry='geometry')
     df_one_variable.crs = "EPSG:3395"
 
-    adjacencies_list, adjacent_counties_df, county_list = generate_adjacent_counties(df_one_variable, variable_name)
+    adjacencies_list, adjacent_counties_df, county_list = generate_adjacent_counties(df_one_variable, variable)
     adjacent_counties_dict = dict(zip(adjacent_counties_df['county'], adjacent_counties_df['adjacent']))
     county_list = adjacent_counties_df['county'].tolist()
     simplices = form_simplicial_complex(adjacent_counties_dict, county_list)
@@ -441,7 +443,7 @@ def process_county(state, county, variable, selected_variables_with_censusinfo, 
 
         # print("Simplices",simplices)
 
-        generalized_variance_dic, component_census, component_simplices = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable_name)
+        generalized_variance_dic, component_census, component_simplices = generate_generalized_variance(simplices=simplices,data_frame=df_one_variable, variable_name=variable)
 
         # print(f'Generalized Variance: {generalized_variance_dic}\n')
 
@@ -484,12 +486,16 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
 
         intervals_dim0 = st.persistence_intervals_in_dimension(0)
         intervals_dim1 = st.persistence_intervals_in_dimension(1)
-        pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
+        # pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
+        pdgms = [[birth, death] for birth, death in intervals_dim0 if death < np.inf]
+
 
         # add interval dim 0  to the pdgms
-        for birth, death in intervals_dim0:
-            if death < np.inf:
-                pdgms.append([birth, death])
+        # for birth, death in intervals_dim0:
+        #     if death < np.inf:
+        #         pdgms.append([birth, death])
+
+
             # elif death == np.inf:
                 # pdgms.append([birth, INFINITY])
 
@@ -514,23 +520,46 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
             # pimgr.kernel_params =  {'sigma': generalized_variance}
             pimgr.kernel_params =  {'sigma': np.sqrt(generalized_variance)}
 
+            # # delete this lines
+            # pimgr.weight = linear_ramp
+            # pimgr.weight_params = {'low':0.0, 'high':1.0, 'start':0.0, 'end':5.0}
+
+
 
             pimgs = pimgr.transform(pdgms)
-            pimgs = np.rot90(pimgs, k=1) 
+            # pimgs = np.rot90(pimgs, k=1) 
 
-            np.save(save_path, pimgs)
+            # np.save(save_path, pimgs)
 
             # plt.figure(figsize=(2.4, 2.4))
             # plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
             # plt.axis('off')  # Turn off axis
             # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
             
-            # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+            # # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+            # plt.savefig(f'{base_path}/{county_stcnty}.png')
+
             # plt.close()
+
+            #new code -------------------------
+            fig, axs = plt.subplots(1, 2,figsize=(20, 10))
+
+            axs[0].set_title("Birth-Persistence\nCoordinates")
+            pimgr.plot_diagram(pdgms, skew=True, ax=axs[0])
+
+            axs[1].set_title("Persistence Image")
+            pimgr.plot_image(pimgs, ax=axs[1])
+
+            plt.tight_layout()
+            plt.savefig(f'{base_path}/{variable_name}_{county}_comparison_1.png')
+            plt.close()
+
+            print("Persistence image generated for ", county)
     elif len(generalized_variance_dic)>1:
 
         # each sub network will generate a separate persistence image
         per_images_per_subcomponent = []
+        pdgms_per_subcomponent = []
 
         for key in component_census.keys():
             # print(key)
@@ -572,13 +601,21 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
             intervals_dim1 = st.persistence_intervals_in_dimension(1)
             pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
 
+            # pdgms = [[birth, death] for birth, death in intervals_dim0 if death < np.inf]
+
             # add interval dim 0  to the pdgms
-            for birth, death in intervals_dim0:
-                if death < np.inf:
-                    pdgms.append([birth, death])
+            # for birth, death in intervals_dim0:
+            #     if death < np.inf:
+            #         pdgms.append([birth, death])
+
+
                 # elif death == np.inf:
                     # pdgms.append([birth, INFINITY])
-                
+            
+            # append each element by element to pdgms_per_subcomponent
+            for elemet in pdgms:
+                pdgms_per_subcomponent.append(elemet)
+                # print(elemet)
 
             # save_path = os.path.join(base_path, variable_name, county_stcnty)
 
@@ -603,13 +640,17 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
                 # pimgr.kernel_params =  {'sigma': generalized_variance}
                 pimgr.kernel_params =  {'sigma': np.sqrt(generalized_variance)}
 
+                # delete this lines
+                pimgr.weight = linear_ramp
+                pimgr.weight_params = {'low':0.0, 'high':1.0, 'start':0.0, 'end':100.0}
+
 
                 pimgs = pimgr.transform(pdgms)
-                pimgs = np.rot90(pimgs, k=1) 
+                # pimgs = np.rot90(pimgs, k=1) 
                 per_images_per_subcomponent.append(pimgs)
 
         final_pimgr = np.sum(per_images_per_subcomponent, axis=0)
-        np.save(save_path, final_pimgr)
+        # np.save(save_path, final_pimgr)
 
         # print(f"Multple pimager shape :",final_pimgr.shape)
 
@@ -618,8 +659,25 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
         # plt.axis('off')  # Turn off axis
         # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
         
-        # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+        # # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png')
+        # plt.savefig(f'{base_path}/{county_stcnty}.png')
+
         # plt.close()
+
+        #new code -------------------------
+        fig, axs = plt.subplots(1, 2,figsize=(20, 10))
+
+        axs[0].set_title("Birth-Persistence\nCoordinates")
+        pimgr.plot_diagram(pdgms_per_subcomponent, skew=True, ax=axs[0])
+
+        axs[1].set_title("Persistence Image")
+        pimgr.plot_image(final_pimgr, ax=axs[1])
+
+        plt.tight_layout()
+        plt.savefig(f'{base_path}/{variable_name}_{county}_comparison_1.png')
+        plt.close()
+
+        print("Persistence image generated for ", county)
 
 
 
@@ -627,9 +685,10 @@ def generate_persistence_images(simplices, df_one_variable, variable_name, count
 # Define the main function
 if __name__ == "__main__":
     # Main execution
-    base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_8/npy_all_variables'
+    # base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/experimet_8/npy_all_variables'
     # data_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
     data_path = "/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_NOT_SCALED_MISSING_REMOVED"
+    base_path = "/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/comparison_experiments/single_county/different weights"
 
     states = get_folders(data_path)
 
@@ -665,7 +724,7 @@ if __name__ == "__main__":
     # INFINITY = (PERSISTENCE_IMAGE_PARAMS['birth_range'][1] - PERSISTENCE_IMAGE_PARAMS['birth_range'][0]) * INF_DELTA
     INFINITY = 1
 
-    create_variable_folders(base_path, selected_variables)
+    # create_variable_folders(base_path, selected_variables)
 
     # for state in tqdm(states, desc="Processing states"):
 
@@ -673,13 +732,17 @@ if __name__ == "__main__":
 
 
 
-    # Experiment with a single county and single variable
-    state = 'TN'
-    county = '47095'
-    variable = 'EP_POV'
+    # Experiment with a single county and sinle variable
+    state = 'NY'
+    # county = '36081' #for disconnected
+    county = '36047'
+
+    variable = 'EP_DISABL'
 
 
     process_county(state,county, variable, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
+
+
         
 
     print('All states processed.')
