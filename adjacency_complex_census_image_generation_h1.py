@@ -135,8 +135,8 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
 # Define the main function
 if __name__ == "__main__":
     # Main execution
-    base_path = '/home/h6x/git_projects/data_processing/processed_data/adjacency_pers_images_npy_county/experimet_4/images'
-    data_path = '/home/h6x/git_projects/data_processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
+    base_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/adjacency_pers_images_npy_county/TN_images'
+    data_path = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_MIN_MAX_SCALED_MISSING_REMOVED'
 
     states = get_folders(data_path)
     selected_variables = [
@@ -145,11 +145,18 @@ if __name__ == "__main__":
     ]
     selected_variables_with_censusinfo = ['FIPS', 'STCNTY'] + selected_variables + ['geometry']
 
+    # PERSISTENCE_IMAGE_PARAMS = {
+    #     'pixel_size': 0.001,
+    #     'birth_range': (-7.0, 0.0),
+    #     'pers_range': (0.0, 2.5), # 0,6
+    #     'kernel_params': {'sigma': 0.008}
+    # }
+
     PERSISTENCE_IMAGE_PARAMS = {
         'pixel_size': 0.001,
-        'birth_range': (-7.0, 0.0),
-        'pers_range': (0.0, 2.5), # 0,6
-        'kernel_params': {'sigma': 0.008}
+        'birth_range': (0.0, 1.00),
+        'pers_range': (0.0, 0.40),
+        'kernel_params': {'sigma': 0.0003}
     }
 
     INF_DELTA = 0.1
@@ -157,7 +164,9 @@ if __name__ == "__main__":
 
     create_variable_folders(base_path, selected_variables)
 
-    for state in tqdm(states, desc="Processing states"):
-        process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
+    state = 'TN'
+
+    # for state in tqdm(states, desc="Processing states"):
+    process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
 
     print('All states processed.')

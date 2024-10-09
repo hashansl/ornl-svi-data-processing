@@ -98,14 +98,14 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
             st.compute_persistence()
             persistence = st.persistence()
 
-            intervals_dim0 = st.persistence_intervals_in_dimension(0)
+            # intervals_dim0 = st.persistence_intervals_in_dimension(0)
             intervals_dim1 = st.persistence_intervals_in_dimension(1)
             pdgms = [[birth, death] for birth, death in intervals_dim1 if death < np.inf]
 
             # add interval dim 0  to the pdgms
-            for birth, death in intervals_dim0:
-                if death < np.inf:
-                    pdgms.append([birth, death])
+            # for birth, death in intervals_dim0:
+            #     if death < np.inf:
+            #         pdgms.append([birth, death])
 
                 # elif death == np.inf:
                     # pdgms.append([birth, INFINITY])
@@ -135,17 +135,50 @@ def process_state(state, selected_variables, selected_variables_with_censusinfo,
                 pimgs = pimgr.transform(pdgms)
                 pimgs = np.rot90(pimgs, k=1) 
 
-                np.save(save_path, pimgs)
+                # np.save(save_path, pimgs)
 
-                # plt.figure(figsize=(2.4, 2.4))
-                # plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
-                # plt.axis('off')  # Turn off axis
-                # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
+                plt.figure(figsize=(2.4, 2.4))
+                plt.imshow(pimgs, cmap='viridis')  # Assuming 'viridis' colormap, change as needed
+                plt.axis('off')  # Turn off axis
+                plt.subplots_adjust(left=0, right=1, top=1, bottom=0)  # Adjust subplot parameters to remove borders
                 
-                # # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png',dpi=300)
-                # plt.close()
+                # plt.savefig(f'{base_path}/{variable_name}/{county_stcnty}.png',dpi=300)
+                plt.savefig(f'{base_path}/{variable_name}/{variable_name}_{county_stcnty}_peristence_image_transformed.png',dpi=300)
+                plt.close()
 
 
+
+
+                #### PERSISTENXE DIAGRAM TEST Transformed
+
+                # Extract birth and death points from the persistence diagram
+                births = [point[0] for point in pdgms]
+                # deaths = [point[1] for point in pdgms]
+
+                # Calculate persistence as death - birth
+                persistence = [death - birth for birth, death in pdgms]
+
+                # Create a new figure and axis
+                fig, ax = plt.subplots(figsize=(10, 10))
+
+                # Plot the persistence points (births vs persistence)
+                ax.scatter(births, persistence, s=100, label='Persistence Points')  # 's' controls point size
+
+                # Define fixed x and y ranges
+                ax.set_xlim([0, 1])  # Replace with desired x range values
+                ax.set_ylim([0, 1]) 
+
+                # Remove tick labels
+                # ax.set_xticks([])
+                # ax.set_yticks([])
+
+                # Remove axis labels
+                # ax.set_xlabel('')
+                # ax.set_ylabel('')
+
+                plt.tight_layout()
+                plt.savefig(f'{base_path}/{variable_name}/{variable_name}_{county_stcnty}_peristence_diagram_transformed.png',dpi=300)
+                plt.close()
 
 
 # Define the main function
@@ -196,9 +229,11 @@ if __name__ == "__main__":
 
     create_variable_folders(base_path, selected_variables)
 
+    state = 'TN'
+    process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
 
-    for state in tqdm(states, desc="Processing states"):
+    # for state in tqdm(states, desc="Processing states"):
 
-        process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
+        # process_state(state, selected_variables, selected_variables_with_censusinfo, base_path, PERSISTENCE_IMAGE_PARAMS, INFINITY)
 
     print('All states processed.')
