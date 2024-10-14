@@ -145,14 +145,19 @@ if __name__ == "__main__":
     #     'EP_SNGPNT', 'EP_LIMENG', 'EP_MINRTY', 'EP_MUNIT', 'EP_MOBILE', 'EP_CROWD', 'EP_NOVEH', 'EP_GROUPQ'
     # ]
 
-    variable = 'EP_MOBILE'
-    selected_variables_with_censusinfo = ['FIPS', 'STCNTY'] + [variable] + ['geometry']
+    # variable = 'EP_MOBILE'
 
+    for variable in selected_variables:
+        print(f'Processing variable: {variable}')
+
+        selected_variables_with_censusinfo = ['FIPS', 'STCNTY'] + [variable] + ['geometry']
+
+        # create_variable_folders(base_path, selected_variables)
+
+        for state in tqdm(states, desc="Processing states"):
+
+            process_state(state, variable, selected_variables_with_censusinfo, base_path)
+
+        # print('All states processed.')
+    print('All variables processed.')
     
-    # create_variable_folders(base_path, selected_variables)
-
-    for state in tqdm(states, desc="Processing states"):
-
-        process_state(state, variable, selected_variables_with_censusinfo, base_path)
-
-    print('All states processed.')
