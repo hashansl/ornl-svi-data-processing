@@ -1,0 +1,11 @@
+Creating a SVI and annotation dataset based on the H1 data points/ Number of counties 
+
+Also processs th data just using H1nad H0 data points combined
+
+# In this study labeling the counties and slecting the counties has done in a specific way. Defined method by us!
+
+1. Get the SVI data and get the count of census tract per county and remove the counties that have less than 4 counties (No H1 points) - This can be added to below table
+2. From the counties just compute H1 and H0 information. Then add overdose labels
+3. Take all the 1(high) counties(but look at the label distribution)
+4. Sort the low(0) counties based on the H1 data points and select the cutoff.
+5. train using the cutoff data!

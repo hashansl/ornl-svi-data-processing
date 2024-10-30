@@ -1,3 +1,9 @@
 processed_data/
 raw_data/
 graph_data_processing/
+
+experiment_1/processed_data_1/
+experiment_1/processed_data_2/
+
+experiment_2/processed_data_1/
+experiment_2/processed_data_2/
