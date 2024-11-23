@@ -1,0 +1,5 @@
+Also processs th data just using H1 and H0 data points combined
+
+This repo we are trying to scale the H1 points and H0 points into same scale. Done that
+
+Also multiple variance scaling considered.
