@@ -71,21 +71,24 @@ def process_state_data(state, us_svi, output_dir):
 
 
 def main():
-    svi_path = '/home/h6x/git_projects/ornl-svi-data-processing/raw_data/svi/2018/SVI2018_US_tract.gdb'
+    # svi_path = '/home/h6x/git_projects/ornl-svi-data-processing/raw_data/svi/2018/SVI2018_US_tract.gdb'
     # output_dir = '/home/h6x/git_projects/data_processing/processed_data/SVI/2020/SVI2020_MIN_MAX_SCALED_MISSING_REMOVED'
-    output_dir = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_NOT_SCALED_MISSING_REMOVED'
+    # output_dir = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/SVI2018_NOT_SCALED_MISSING_REMOVED'
+    svi_path = '/home/h6x/git_projects/ornl-svi-data-processing/raw_data/svi/2020/SVI2020_US_tract.gdb'
+    output_dir = '/home/h6x/git_projects/ornl-svi-data-processing/processed_data/SVI/2020/SVI2020_NOT_SCALED_MISSING_REMOVED'
 
-    raw_variables = [
-        'EP_POV', 'EP_UNEMP', 'EP_PCI', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
-        'EP_AGE17', 'EP_DISABL', 'EP_SNGPNT', 'EP_LIMENG', 'EP_MINRTY', 'EP_MUNIT',
-        'EP_MOBILE', 'EP_CROWD', 'EP_NOVEH', 'EP_GROUPQ'
-    ]
 
     # raw_variables = [
-    #     'EP_POV150', 'EP_UNEMP', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
+    #     'EP_POV', 'EP_UNEMP', 'EP_PCI', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
     #     'EP_AGE17', 'EP_DISABL', 'EP_SNGPNT', 'EP_LIMENG', 'EP_MINRTY', 'EP_MUNIT',
     #     'EP_MOBILE', 'EP_CROWD', 'EP_NOVEH', 'EP_GROUPQ'
     # ]
+
+    raw_variables = [
+        'EP_POV150', 'EP_UNEMP', 'EP_NOHSDP', 'EP_UNINSUR', 'EP_AGE65',
+        'EP_AGE17', 'EP_DISABL', 'EP_SNGPNT', 'EP_LIMENG', 'EP_MINRTY', 'EP_MUNIT',
+        'EP_MOBILE', 'EP_CROWD', 'EP_NOVEH', 'EP_GROUPQ'
+    ]
 
     us_svi = load_data(svi_path)
     us_svi = preprocess_svi_data(us_svi, raw_variables)
